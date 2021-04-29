@@ -39,7 +39,7 @@ if __name__ == '__main__':
     rmse = mean_squared_error
     cor = pearsonr
     r = r2_score
-    df = pd.read_csv("spb_data.csv", delimiter=',')
+    df = pd.read_csv("src\spb_data.csv", delimiter=',')
     print(len(df))
 
     print(df['date'])
@@ -50,6 +50,7 @@ if __name__ == '__main__':
     plt.xlabel('Days from the first of January 2021')
     plt.ylabel('Active cases')
     plt.tight_layout()
+    # plt.show()
     # x = np.array(df['date']).reshape(-1, 1)
     y = np.array(df['act_case'])  # .reshape(-1, 1)
     x = stand_x.reshape(-1, 1)

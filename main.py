@@ -3,8 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from scipy.stats import pearsonr
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import make_scorer
 
 from sklearn.svm import LinearSVR
 
@@ -37,79 +40,123 @@ if __name__ == '__main__':
     print(len(df))
 
     print(df['date'])
-    x = np.array([x for x in range(1, len(df) + 1)])
     sns.set_theme()
     # x = [01.01, 01.02, 01.03, 01.04]
-    axe = sns.scatterplot(data=df, x=x, y='act_case')
+    stand_x = np.array([x for x in range(1, len(df) + 1)])
+    axe = sns.scatterplot(data=df, x=stand_x, y='act_case')
     plt.xlabel('Days from the first of January 2021')
     plt.ylabel('Active cases')
     plt.tight_layout()
-    sns.set_theme()
-    sns.set_color_codes("dark")
     # x = np.array(df['date']).reshape(-1, 1)
     y = np.array(df['act_case'])  # .reshape(-1, 1)
-    x = x.reshape(-1, 1)
+    x = stand_x.reshape(-1, 1)
     y = y.reshape(-1, 1)
-    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=12)
+    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.21, random_state=15)
     # .reshape(-1, 1)
     lm = LinearRegression()
     lm.fit(X_train, y_train)
     y_dist_lin = mean_absolute_error(y_test, lm.predict(X_test))
-    print("lin",y_dist_lin)
-    plt.plot(X_test, lm.predict(X_test), color='b', label='lin')
+    print("lin", y_dist_lin)
+
     # SVR
 
     y_train = y_train.reshape(len(y_train), )
     y_test = y_test.reshape(len(y_test), )
 
-    eps = 3
-    svr = LinearSVR(epsilon=eps, C=30000, fit_intercept=True)
+    eps = 6900  # 5440  # 10368
+    svr = LinearSVR(epsilon=eps, C=200000, fit_intercept=True, max_iter=10000000)  # 40000 #69000
     svr.fit(X_train, y_train)
-    plt.plot(X_test, svr.predict(X_test), color='m', label ='svr')
+    plt.plot(X_test, svr.predict(X_test) + eps, color='pink', linewidth=1.5, linestyle='dotted')
+    plt.plot(X_test, svr.predict(X_test) - eps, color='pink', linewidth=1.5, linestyle='dotted')
+    sns.set_theme()
+    sns.set_color_codes("dark")
+    plt.plot(X_test, svr.predict(X_test), color='m', label='SVR')
+    plt.show()
+
+    sns.scatterplot(data=df, x=stand_x, y=np.array(df['act_case']))
+
+    plt.plot(X_test, lm.predict(X_test), color='y', label='LN')
+    plt.plot(X_test, svr.predict(X_test), color='m', label='SVR')
+    plt.xlabel('Days from the first of January 2021')
+    plt.ylabel('Active cases')
+    plt.tight_layout()
     plt.legend()
     plt.show()
     y_dist_svr = mean_absolute_error(y_test, svr.predict(X_test))
-    print("svr",y_dist_svr)
+    print("svr", y_dist_svr)
     test_mae_list = []
     perc_within_eps_list = []
 
+    # grid = {
+    #     'C': np.linspace(60000, 90000, num=20),
+    #     'epsilon': np.linspace(1000, 21000, num=10)
+    # }
+    #
+    # svr_gridsearch = LinearSVR(fit_intercept=True, max_iter=10000000)
+    # # grid_svr = GridSearchCV(svr_gridsearch, grid, scoring='neg_mean_absolute_error', cv=5)
+    # # grid_svr.fit(X_train, y_train)
+    #
+    # # def frac_within_eps(y_true, y_pred):
+    # #     return np.sum(abs(y_true - y_pred) <= eps) / len(y_true)
+    #
+    # # my_scorer = make_scorer(frac_within_eps, greater_is_better=True)
+    # grid_svr_eps = GridSearchCV(svr_gridsearch, grid, scoring='neg_mean_absolute_error', cv=5)
+    #
+    # grid_svr_eps.fit(X_train, y_train)
+    #
+    # best_grid_svr_eps = grid_svr_eps.best_estimator_
+    # best_grid_svr_eps.fit(X_train, y_train)
+    # print("C: {}".format(best_grid_svr_eps.C))
+    # print("Epsilon: {}".format(best_grid_svr_eps.epsilon))
+    # m = mean_absolute_error(y_test, best_grid_svr_eps.predict(X_test))
+    mae = mean_absolute_error
+    rmse = mean_squared_error
+    cor = pearsonr
+    r = r2_score
+    epss = np.linspace(1000, 10000, num=30)
+    list_mae = []
+    list_rmse = []
+    list_cor = []
+    list_r = []
+    all_list = [[list_mae, "MAE"], [list_rmse, "RMSE"], [list_cor, "COR"], [list_r, "R2"]]
+    for eps in epss:
+        svr = LinearSVR(epsilon=eps, C=200000, fit_intercept=True, max_iter=10000000)
+        svr.fit(X_train, y_train)
+        pred = svr.predict(X_test)
+        list_mae.append(mae(y_test, pred))
+        list_rmse.append(rmse(y_test, pred))
+        list_cor.append(cor(y_test, pred)[0])
+        list_r.append(r(y_test, pred))
+    print(list_cor)
+    for name_lis in all_list:
+        lis, name = name_lis
+        plt.plot(epss, lis)
+        plt.ylabel(name)
+        plt.xlabel("eps")
+        plt.title("SVR")
+        plt.show()
 
+    list_mae = []
+    list_rmse = []
+    list_cor = []
+    list_r = []
+    for eps in epss:
+        lm = LinearRegression()
+        lm.fit(X_train, y_train)
+        pred = lm.predict(X_test)
+        list_mae.append(mae(y_test, pred))
+        list_rmse.append(rmse(y_test, pred))
+        list_cor.append(cor(y_test, pred))
+        list_r.append(r(y_test, pred))
 
-    #OPt of C
+    for name_lis in all_list:
+        lis, name = name_lis
+        plt.plot(epss, lis)
+        plt.ylabel(name)
+        plt.xlabel("eps")
+        plt.title("LR")
+        plt.show()
 
-
-    # c_space = np.linspace(20000, 30000)
-    #
-    # for c in c_space:
-    #     varied_svr = LinearSVR(epsilon=eps, C=c, fit_intercept=True, max_iter=10000000)
-    #
-    #     varied_svr.fit(X_train, y_train)
-    #
-    #     test_mae = mean_absolute_error(y_test, varied_svr.predict(X_test))
-    #     test_mae_list.append(test_mae)
-    #
-    #     perc_within_eps = 100 * np.sum(abs(y_test - varied_svr.predict(X_test)) <= eps) / len(y_test)
-    #     perc_within_eps_list.append(perc_within_eps)
-    #
-    # fig, ax1 = plt.subplots(figsize=(12, 7))
-    #
-    # color = 'green'
-    # ax1.set_xlabel('C')
-    # ax1.set_ylabel('% within Epsilon', color=color)
-    # ax1.scatter(c_space, perc_within_eps_list, color=color)
-    # ax1.tick_params(axis='y', labelcolor=color)
-    #
-    # color = 'blue'
-    # ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-    # ax2.set_ylabel('Test MAE', color=color)  # we already handled the x-label with ax1
-    # ax2.scatter(c_space, test_mae_list, color=color)
-    # ax2.tick_params(axis='y', labelcolor=color)
-    #
-    # m = max(perc_within_eps_list)
-    # inds = [i for i, j in enumerate(perc_within_eps_list) if j == m]
-    # C = c_space[inds[0]]
-    #
-    # print("best C =", C)
-    # plt.show()
+    # svr_results(y_test, X_test, best_grid_svr_eps)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

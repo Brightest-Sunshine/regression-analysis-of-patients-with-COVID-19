@@ -35,7 +35,10 @@ def MNK(x, y):
 
 if __name__ == '__main__':
     # sns.set_color_codes()
-
+    mae = mean_absolute_error
+    rmse = mean_squared_error
+    cor = pearsonr
+    r = r2_score
     df = pd.read_csv("spb_data.csv", delimiter=',')
     print(len(df))
 
@@ -53,15 +56,14 @@ if __name__ == '__main__':
     y = y.reshape(-1, 1)
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.21, random_state=15)
     # .reshape(-1, 1)
+    y_train = y_train.reshape(len(y_train), )
+    y_test = y_test.reshape(len(y_test), )
     lm = LinearRegression()
     lm.fit(X_train, y_train)
     y_dist_lin = mean_absolute_error(y_test, lm.predict(X_test))
     print("lin", y_dist_lin)
 
     # SVR
-
-    y_train = y_train.reshape(len(y_train), )
-    y_test = y_test.reshape(len(y_test), )
 
     eps = 6900  # 5440  # 10368
     svr = LinearSVR(epsilon=eps, C=200000, fit_intercept=True, max_iter=10000000)  # 40000 #69000
@@ -74,8 +76,21 @@ if __name__ == '__main__':
     plt.show()
 
     sns.scatterplot(data=df, x=stand_x, y=np.array(df['act_case']))
+    LR_res = lm.predict(X_test)
+    SVR_res = svr.predict(X_test)
+    print("LR:")
+    print("MAE ", mae(y_test, LR_res))
+    print("RMSE ", rmse(y_test, LR_res))
+    # c = cor(y_test,LR_res)
+    print("cor ", cor(y_test, LR_res)[0])
+    print("R2 ", r(y_test, LR_res))
 
-    plt.plot(X_test, lm.predict(X_test), color='y', label='LN')
+    print("SVR")
+    print("MAE ", mae(y_test, SVR_res))
+    print("RMSE ", rmse(y_test, SVR_res))
+    print('cor ', cor(y_test, SVR_res)[0])
+    print("R2 ", r(y_test, SVR_res))
+    plt.plot(X_test, lm.predict(X_test), color='r', label='LN')
     plt.plot(X_test, svr.predict(X_test), color='m', label='SVR')
     plt.xlabel('Days from the first of January 2021')
     plt.ylabel('Active cases')
@@ -109,10 +124,7 @@ if __name__ == '__main__':
     # print("C: {}".format(best_grid_svr_eps.C))
     # print("Epsilon: {}".format(best_grid_svr_eps.epsilon))
     # m = mean_absolute_error(y_test, best_grid_svr_eps.predict(X_test))
-    mae = mean_absolute_error
-    rmse = mean_squared_error
-    cor = pearsonr
-    r = r2_score
+
     epss = np.linspace(1000, 10000, num=30)
     list_mae = []
     list_rmse = []
@@ -128,34 +140,43 @@ if __name__ == '__main__':
         list_cor.append(cor(y_test, pred)[0])
         list_r.append(r(y_test, pred))
     print(list_cor)
-    for name_lis in all_list:
-        lis, name = name_lis
-        plt.plot(epss, lis)
+
+    lm = LinearRegression()
+    lm.fit(X_train, y_train)
+    pred = lm.predict(X_test)
+    LR_list = [mae(y_test, pred), rmse(y_test, pred), cor(y_test, pred)[0], r(y_test, pred)]
+    for name_lis in zip(all_list, LR_list):
+        SVR, LR = name_lis
+        lis, name = SVR
+        plt.plot(epss, lis, label="SVR")
         plt.ylabel(name)
         plt.xlabel("eps")
         plt.title("SVR")
+        plt.plot(epss, [LR] *len(epss) , label="LR")
+        plt.legend()
         plt.show()
 
-    list_mae = []
-    list_rmse = []
-    list_cor = []
-    list_r = []
-    for eps in epss:
-        lm = LinearRegression()
-        lm.fit(X_train, y_train)
-        pred = lm.predict(X_test)
-        list_mae.append(mae(y_test, pred))
-        list_rmse.append(rmse(y_test, pred))
-        list_cor.append(cor(y_test, pred))
-        list_r.append(r(y_test, pred))
-
-    for name_lis in all_list:
-        lis, name = name_lis
-        plt.plot(epss, lis)
-        plt.ylabel(name)
-        plt.xlabel("eps")
-        plt.title("LR")
-        plt.show()
+    # list_mae = []
+    # list_rmse = []
+    # list_cor = []
+    # list_r = []
+    # all_list = [[list_mae, "MAE"], [list_rmse, "RMSE"], [list_cor, "COR"], [list_r, "R2"]]
+    # for eps in epss:
+    #     lm = LinearRegression()
+    #     lm.fit(X_train, y_train)
+    #     pred = lm.predict(X_test)
+    #     list_mae.append(mae(y_test, pred))
+    #     list_rmse.append(rmse(y_test, pred))
+    #     list_cor.append(cor(y_test, pred)[0])
+    #     list_r.append(r(y_test, pred))
+    #
+    # for name_lis in all_list:
+    #     lis, name = name_lis
+    #     plt.plot(epss, lis)
+    #     plt.ylabel(name)
+    #     plt.xlabel("eps")
+    #     plt.title("LR")
+    #     plt.show()
 
     # svr_results(y_test, X_test, best_grid_svr_eps)
 

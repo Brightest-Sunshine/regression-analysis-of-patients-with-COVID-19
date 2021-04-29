@@ -90,7 +90,7 @@ if __name__ == '__main__':
     print("RMSE ", rmse(y_test, SVR_res))
     print('cor ', cor(y_test, SVR_res)[0])
     print("R2 ", r(y_test, SVR_res))
-    plt.plot(X_test, lm.predict(X_test), color='r', label='LN')
+    plt.plot(X_test, lm.predict(X_test), color='k', label='LN')
     plt.plot(X_test, svr.predict(X_test), color='m', label='SVR')
     plt.xlabel('Days from the first of January 2021')
     plt.ylabel('Active cases')
